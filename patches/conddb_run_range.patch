@@ -1,0 +1,14 @@
+--- a/p348reco/conddb.cc
++++ b/p348reco/conddb.cc
+@@ -1,7 +1,10 @@
+ // Fix: missing geometry initialization for 2018 calibration runs 3574-3854
+ // The original code only called Init_Geometry_2018_invis100() for runs 3855-4207,
+ // leaving runs 3574-3854 without geometry. This caused LoadFromJson("") to be
+-// called with an empty path, crashing the nlohmann::json parser.
++// called with an empty path, crashing the nlohmann::json parser at startup.
++//
++// Diagnosed with gdb: PlacementsMap::LoadFromJson received empty string,
++// std::ifstream("") failed silently, json::parse threw parse_error.101.
+
+-  if (3855 <= run && run <= 4207) Init_Geometry_2018_invis100();
++  if (3574 <= run && run <= 4207) Init_Geometry_2018_invis100();

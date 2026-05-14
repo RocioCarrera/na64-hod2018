@@ -1,0 +1,36 @@
+--- a/p348reco/led.cc
++++ b/p348reco/led.cc
+@@ -1,6 +1,7 @@
+ // Fix: missing LED calibration data for run 3661 (and other early 2018 runs)
+ // Run 3661 has no entries in ledspill-2018-v3.txt. The standard fallback
+ // (try 3 previous spills + run average) also fails, causing abort.
++// Solution: after standard fallback, search for nearest run with available data.
+
+ // 1) Add at the top of led.cc:
++#include <climits>
+ 
+ // 2) In Set_LED_spill(), replace the throw after the fallback loop:
+ 
+-    if (!hasData) {
+-      throw std::runtime_error("Missing LED corrections data");
+-    }
++    // Try nearest available run (fallback for runs with no LED data at all)
++    if (!hasData) {
++      int best_run = -1;
++      int best_dist = INT_MAX;
++      for (auto& entry : LEDcalib) {
++        if (entry.first.spill != 0) continue; // only run averages
++        int dist = abs((int)entry.first.run - (int)eid.run);
++        if (dist < best_dist) { best_dist = dist; best_run = entry.first.run; }
++      }
++      if (best_run > 0) {
++        loadid = {best_run, 0};
++        hasData = (LEDcalib.find(loadid) != LEDcalib.end());
++        cout << "WARNING: using LED data from nearest run " << best_run
++             << " (dist=" << best_dist << ")" << endl;
++      }
++      if (!hasData) {
++        cout << "WARNING: No LED corrections available, skipping." << endl;
++        return;
++      }
++    }

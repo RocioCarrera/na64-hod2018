@@ -1,0 +1,109 @@
+<Map>
+
+<!-- ============================================================
+     HODO.xml — Fixed version for NA64 2018 Hod2018 data
+     
+     Changes from original:
+       - Port 3 (Chilean team hodoscope) run range extended from
+         "3667-4223" to "3610-4223" to include early calibration
+         runs 3610, 3655, 3661, 3662 which were missing.
+     
+     Pending (confirm with P. Ulloa):
+       - Port 5 run range: currently "4224-4310", may need
+         extension if port 5 was also active for runs ~3661.
+         If so, change to "3610-4310" to get 32 strips per plane.
+     ============================================================ -->
+
+  <!-- Port 5: HOD2X channels 0-15, HOD2Y channels 16-31 -->
+  <ChipSADC
+   version      = "2"
+   runs         = "4224-4310"
+   year         = "2018"
+   options      = "xy data_format3"
+   detector     = "Hodoscopes, MSADC"
+   maintainer   = "Gerardo Vasquez">
+
+HOD2X    623  5   0   0     0
+HOD2X    623  5   1   0     1
+HOD2X    623  5   2   0     2
+HOD2X    623  5   3   0     3
+HOD2X    623  5   4   0     4
+HOD2X    623  5   5   0     5
+HOD2X    623  5   6   0     6
+HOD2X    623  5   7   0     7
+HOD2X    623  5   8   0     8
+HOD2X    623  5   9   0     9
+HOD2X    623  5  10   0    10
+HOD2X    623  5  11   0    11
+HOD2X    623  5  12   0    12
+HOD2X    623  5  13   0    13
+HOD2X    623  5  14   0    14
+HOD2X    623  5  15   0    15
+
+HOD2Y    623  5  16   0     0
+HOD2Y    623  5  17   0     1
+HOD2Y    623  5  18   0     2
+HOD2Y    623  5  19   0     3
+HOD2Y    623  5  20   0     4
+HOD2Y    623  5  21   0     5
+HOD2Y    623  5  22   0     6
+HOD2Y    623  5  23   0     7
+HOD2Y    623  5  24   0     8
+HOD2Y    623  5  25   0     9
+HOD2Y    623  5  26   0    10
+HOD2Y    623  5  27   0    11
+HOD2Y    623  5  28   0    12
+HOD2Y    623  5  29   0    13
+HOD2Y    623  5  30   0    14
+HOD2Y    623  5  31   0    15
+
+  </ChipSADC>
+
+  <!-- Port 3: Hod2018 (Chilean team), HOD2X channels 32-47, HOD2Y channels 48-63 -->
+  <!-- NOTE: strips are in REVERSED order (15 down to 0)                           -->
+  <!-- FIXED: run range extended from "3667-4223" to "3610-4223"                   -->
+  <ChipSADC
+   version      = "2"
+   runs         = "3610-4223"
+   year         = "2018"
+   options      = "xy data_format3"
+   detector     = "Hodoscopes (Chile), MSADC"
+   maintainer   = "Gerardo Vasquez">
+
+HOD2X    623  3  32   0     15
+HOD2X    623  3  33   0     14
+HOD2X    623  3  34   0     13
+HOD2X    623  3  35   0     12
+HOD2X    623  3  36   0     11
+HOD2X    623  3  37   0     10
+HOD2X    623  3  38   0      9
+HOD2X    623  3  39   0      8
+HOD2X    623  3  40   0      7
+HOD2X    623  3  41   0      6
+HOD2X    623  3  42   0      5
+HOD2X    623  3  43   0      4
+HOD2X    623  3  44   0      3
+HOD2X    623  3  45   0      2
+HOD2X    623  3  46   0      1
+HOD2X    623  3  47   0      0
+
+HOD2Y    623  3  48   0     15
+HOD2Y    623  3  49   0     14
+HOD2Y    623  3  50   0     13
+HOD2Y    623  3  51   0     12
+HOD2Y    623  3  52   0     11
+HOD2Y    623  3  53   0     10
+HOD2Y    623  3  54   0      9
+HOD2Y    623  3  55   0      8
+HOD2Y    623  3  56   0      7
+HOD2Y    623  3  57   0      6
+HOD2Y    623  3  58   0      5
+HOD2Y    623  3  59   0      4
+HOD2Y    623  3  60   0      3
+HOD2Y    623  3  61   0      2
+HOD2Y    623  3  62   0      1
+HOD2Y    623  3  63   0      0
+
+  </ChipSADC>
+
+</Map>
