@@ -300,7 +300,7 @@ hx->Draw();
   Likely a different MM strip configuration in the maps. Under investigation.
 - **HOD2 32 strips:** The report (Ulloa, 2019) shows a 32×32 hit map.
   Current mapping covers only 16 strips per plane (port 3, channels 32–63).
-  Port 5 (channels 0–31) may also have been active — needs confirmation with P. Ulloa.
+  Port 5 (channels 0–31) may also have been active -> solved. Current configurarion is ok. 
 - **HCAL NaN:** `hcalTotalEnergy(0/1/2)` returns NaN for calibration runs
   (B field = 0T, HCAL not calibrated for this mode). `hcal3` works normally.
 
