@@ -1,0 +1,44 @@
+--- a/p348reco/mm.cc
++++ b/p348reco/mm.cc
+@@ -1,10 +1,22 @@
+ // Fix: segmentation violation in DoHitAccumulation for 2018 calibration runs
+ // (observed in runs 3661, 3662, 3665 and any run before 3855)
+ //
+ // Root cause:
+ //   In conddb.cc, Init_Calib_2018_MM() is only called for runs >= 3855.
+ //   For earlier runs (e.g. 3574-3854), MicromegaPlane::calib remains null
+ //   (initialized to 0 in MicromegaPlane constructor in mm.h).
+ //   Dereferencing *plane.calib on the first line of DoHitAccumulation
+ //   caused a segmentation violation.
+ //
+ // Fix:
+ //   Add a null check before dereferencing plane.calib.
+ //   If calibration is not loaded, skip MM hit accumulation silently.
+ //
+// Note: not sure about run threshold in Init_Calib_2018_MM //
+ // Also included: bounds checks for channel and strip indices, which
+ //   prevent crashes if the raw data contains unexpected channel numbers.
+
+ void DoHitAccumulation(const CS::uint16 chan, const CS::uint32* raw_q, MicromegaPlane& plane)
+ {
++  // Null check: calib is 0 for runs where Init_Calib_2018_MM was not called
++  if (!plane.calib) return;
++
++  // Bounds checks: prevent crash if chan or bin is out of range
++  const MM_plane_calib& calib_check = *plane.calib;
++  if (chan >= calib_check.sigma.size()) return;
++  if (calib_check.MM_map.find(chan) == calib_check.MM_map.end()) return;
++
+   const MM_plane_calib& calib = *plane.calib;
+   CS::uint32 max_q = 0;
+   // Find max ADC value
+@@ -30,7 +42,9 @@ void DoHitAccumulation(const CS::uint16 chan, const CS::uint32* raw_q, Micromega
+   double sigma_t02  = calib.timing.a02.error(A0,A2,calib.sigma[chan]);
+   double sigma_t12  = calib.timing.a12.error(A1,A2,calib.sigma[chan]);
+   // create an entry for each strip connected to electronics channel 'chan'
+   for(CS::uint16 bin : calib.MM_map.at(chan)) {
++    if (bin >= plane.strips.size()) continue;
+     MMStrip hit_strip(bin, raw_Q, max_q, t02, t12, sigma_t02, sigma_t12);
+     plane.strips[bin] = hit_strip;
+   }
+ }
