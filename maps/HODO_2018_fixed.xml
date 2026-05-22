@@ -14,10 +14,10 @@
          If so, change to "3610-4310" to get 32 strips per plane.
      ============================================================ -->
 
-  <!-- Port 5: HOD2X channels 0-15, HOD2Y channels 16-31 -->
+  <!-- Port 5: HOD2X channels 0-15, HOD2Y channels 16-31; r.c: runs extended from 4224 to 3610 for tests -->
   <ChipSADC
    version      = "2"
-   runs         = "4224-4310"
+   runs         = "3610-4310"
    year         = "2018"
    options      = "xy data_format3"
    detector     = "Hodoscopes, MSADC"
