@@ -6,18 +6,24 @@
 // Key feature: Hod2018 (HOD2) raw SADC waveform access.
 // SADC preprocessing mode 0-33 stores the full waveform.
 // Standard RunCellReco fails (no 2018 HOD2 calibration loaded).
-// Solution: read raw ChipSADC::Digit samples directly and compute
-//   amplitude = max(samples) - pedestal(mean of first 5 samples)
+// Solution: read raw ChipSADC::Digit samples directly.
+//
+// HOD2 has TWO physical layers (two ports of source 623):
+//   Port 3 (channels 32-47/48-63): strips in REVERSED order (strip = 15-chan)
+//   Port 5 (channels  0-15/16-31): strips in DIRECT  order (strip = chan)
+// The two layers are physically offset, enabling 31-bin reconstruction.
+// Distinguished by: port3 → strip==15-chan, port5 → strip==chan
 //
 // Detectors with data for these runs:
-//   ECAL, HCAL3, SRD, VETO, HOD2
+//   ECAL, HCAL3, SRD, VETO, HOD2 (both ports)
 //   (MM, GEM, Straw, BGO, tracking: empty - B field = 0T)
 //
 // Prerequisites (see README.md):
 //   - ENABLE_TRACKING=1, GENFIT_DIR, TTOOLS_DIR, CATSC_DIR exported
-//   - conddb.cc run range fix (bug: runs 3574-3854 had no geometry)
-//   - led.cc LED fallback fix (bug: run 3661 has no LED calibration)
-//   - maps/2018.xml/HODO.xml run range extended to 3610 (bug: was 3667)
+//   - conddb.cc fix: runs 3574-3854 had no geometry
+//   - led.cc fix: nearest-run LED fallback for run 3661
+//   - maps/2018.xml/HODO.xml: port 3 runs extended to 3610, port 5 to 3610
+//   - mm.cc fix: null calibration check in DoHitAccumulation
 // ============================================================
 
 #include "DaqEventsManager.h"
@@ -95,13 +101,9 @@ int main(int argc, char *argv[])
   tree->Branch("ECAL_t0",   ECAL_t0,  "ECAL_t0[2][6][6]/D");
 
   // ===== HCAL =====
-  // Note: hcal0/1/2 return NaN for calibration runs (B=0T, no calibration)
-  // hcal3 has data (zero-degree calorimeter, separate from main magnet)
   double hcal0, hcal1, hcal2, hcal3;
-  tree->Branch("hcal0", &hcal0);
-  tree->Branch("hcal1", &hcal1);
-  tree->Branch("hcal2", &hcal2);
-  tree->Branch("hcal3", &hcal3);
+  tree->Branch("hcal0", &hcal0); tree->Branch("hcal1", &hcal1);
+  tree->Branch("hcal2", &hcal2); tree->Branch("hcal3", &hcal3);
 
   // ===== SRD =====
   double SRD_ene[4], SRD_t0[4], srdTotal;
@@ -119,42 +121,49 @@ int main(int argc, char *argv[])
   tree->Branch("showerChi2", &showerChi2);
 
   // ================================================================
-  // HOD2 (Hod2018): 16 X strips + 16 Y strips
+  // HOD2 (Hod2018): TWO physical layers, each 16 strips
   //
-  // Two sets of branches:
+  // Port 3 (source 623, ch 32-63): Layer A
+  //   HOD2X ch 32-47 → strips 15-0 (reversed: strip = 15 - relative_chan)
+  //   HOD2Y ch 48-63 → strips 15-0 (reversed)
+  //   Physical positions: odd mm  (1, 3, 5, ..., 31 mm)
   //
-  // 1) RAW: amplitude computed directly from ChipSADC waveform samples
-  //    amp = max(samples) - pedestal
-  //    pedestal = mean of first 5 samples
-  //    → This is the primary source of HOD2 data for these runs
+  // Port 5 (source 623, ch 0-31):  Layer B
+  //   HOD2X ch  0-15 → strips  0-15 (direct: strip = relative_chan)
+  //   HOD2Y ch 16-31 → strips  0-15 (direct)
+  //   Physical positions: even mm (2, 4, 6, ..., 32 mm)
   //
-  // 2) RECO: output of standard RunCellReco (Cell.amplitude, Cell.energy)
-  //    → Also has data after fixing the maps run range (HODO.xml)
-  //    → Kept for cross-checking with raw amplitudes
+  // Combined → 31 bins at 1mm resolution (positions 1-32mm)
+  // Edge strips (position 1mm and 32mm) have no overlap on one side.
   //
-  // Channel mapping (HODO.xml, port 3, source 623):
-  //   HOD2X: ADC channels 32-47 → strips 15-0 (reversed)
-  //   HOD2Y: ADC channels 48-63 → strips 15-0 (reversed)
-  // Gains (from Ulloa 2019 report, run 3661):
-  //   X strips: ~9-17 mV/pixel
-  //   Y strips: ~9-11 mV/pixel
+  // Port identification (no explicit port getter available):
+  //   Port 3: strip == 15 - chan  (reversed mapping)
+  //   Port 5: strip == chan       (direct mapping)
   // ================================================================
 
-  // HOD2 raw (from ChipSADC::GetSamples)
-  double HOD2_xamp[16],      HOD2_yamp[16];      // signal = max - pedestal
-  double HOD2_xped[16],      HOD2_yped[16];      // pedestal (mean first 5 samples)
-  double HOD2_xmax[16],      HOD2_ymax[16];      // raw max sample value
-  int    HOD2_xnsamples[16], HOD2_ynsamples[16]; // waveform length
-  tree->Branch("HOD2_xamp",      HOD2_xamp,      "HOD2_xamp[16]/D");
-  tree->Branch("HOD2_yamp",      HOD2_yamp,      "HOD2_yamp[16]/D");
-  tree->Branch("HOD2_xped",      HOD2_xped,      "HOD2_xped[16]/D");
-  tree->Branch("HOD2_yped",      HOD2_yped,      "HOD2_yped[16]/D");
-  tree->Branch("HOD2_xmax",      HOD2_xmax,      "HOD2_xmax[16]/D");
-  tree->Branch("HOD2_ymax",      HOD2_ymax,      "HOD2_ymax[16]/D");
-  tree->Branch("HOD2_xnsamples", HOD2_xnsamples, "HOD2_xnsamples[16]/I");
-  tree->Branch("HOD2_ynsamples", HOD2_ynsamples, "HOD2_ynsamples[16]/I");
+  // HOD2 Port 3 (Layer A, odd mm positions: 1,3,5,...,31)
+  double HOD2_xamp_p3[16], HOD2_yamp_p3[16];
+  double HOD2_xped_p3[16], HOD2_yped_p3[16];
+  double HOD2_xmax_p3[16], HOD2_ymax_p3[16];
+  tree->Branch("HOD2_xamp_p3", HOD2_xamp_p3, "HOD2_xamp_p3[16]/D");
+  tree->Branch("HOD2_yamp_p3", HOD2_yamp_p3, "HOD2_yamp_p3[16]/D");
+  tree->Branch("HOD2_xped_p3", HOD2_xped_p3, "HOD2_xped_p3[16]/D");
+  tree->Branch("HOD2_yped_p3", HOD2_yped_p3, "HOD2_yped_p3[16]/D");
+  tree->Branch("HOD2_xmax_p3", HOD2_xmax_p3, "HOD2_xmax_p3[16]/D");
+  tree->Branch("HOD2_ymax_p3", HOD2_ymax_p3, "HOD2_ymax_p3[16]/D");
 
-  // HOD2 standard reco (from RunCellReco via RunP348Reco)
+  // HOD2 Port 5 (Layer B, even mm positions: 2,4,6,...,32)
+  double HOD2_xamp_p5[16], HOD2_yamp_p5[16];
+  double HOD2_xped_p5[16], HOD2_yped_p5[16];
+  double HOD2_xmax_p5[16], HOD2_ymax_p5[16];
+  tree->Branch("HOD2_xamp_p5", HOD2_xamp_p5, "HOD2_xamp_p5[16]/D");
+  tree->Branch("HOD2_yamp_p5", HOD2_yamp_p5, "HOD2_yamp_p5[16]/D");
+  tree->Branch("HOD2_xped_p5", HOD2_xped_p5, "HOD2_xped_p5[16]/D");
+  tree->Branch("HOD2_yped_p5", HOD2_yped_p5, "HOD2_yped_p5[16]/D");
+  tree->Branch("HOD2_xmax_p5", HOD2_xmax_p5, "HOD2_xmax_p5[16]/D");
+  tree->Branch("HOD2_ymax_p5", HOD2_ymax_p5, "HOD2_ymax_p5[16]/D");
+
+  // HOD2 standard reco output (cross-check, both ports combined in same array)
   double HOD2_xamp_reco[16], HOD2_yamp_reco[16];
   double HOD2_xene_reco[16], HOD2_yene_reco[16];
   double HOD2_xt0_reco[16],  HOD2_yt0_reco[16];
@@ -196,8 +205,6 @@ int main(int argc, char *argv[])
     isOnSpill        = e.isOnSpill;      isTriggerPhysics = e.isTriggerPhysics;
     isTriggerBeam    = e.isTriggerBeam;  isTriggerRandom  = e.isTriggerRandom;
     isTriggerECAL    = e.isTriggerECAL;  isTriggerMuonInv = e.isTriggerMuonInv;
-
-    // --- Timing ---
     masterTime = e.masterTime;
 
     // --- Scintillators ---
@@ -206,8 +213,7 @@ int main(int argc, char *argv[])
     S2_amp = e.S2.energy; S2_t0 = e.S2.t0ns();
 
     // --- ECAL ---
-    ecal0     = e.ecalTotalEnergy(0);
-    ecal1     = e.ecalTotalEnergy(1);
+    ecal0 = e.ecalTotalEnergy(0); ecal1 = e.ecalTotalEnergy(1);
     ecalTotal = ecal0 + ecal1;
     for (int d = 0; d < 2; d++)
       for (int x = 0; x < 6; x++)
@@ -223,29 +229,32 @@ int main(int argc, char *argv[])
     // --- SRD ---
     srdTotal = 0;
     for (int i = 0; i < 4; i++) {
-      SRD_ene[i] = e.SRD[i].energy;
-      SRD_t0[i]  = e.SRD[i].t0ns();
-      srdTotal  += e.SRD[i].energy;
+      SRD_ene[i] = e.SRD[i].energy; SRD_t0[i] = e.SRD[i].t0ns();
+      srdTotal += e.SRD[i].energy;
     }
 
     // --- VETO ---
     for (int i = 0; i < 6; i++) {
-      VETO_ene[i] = e.VETO[i].energy;
-      VETO_t0[i]  = e.VETO[i].t0ns();
+      VETO_ene[i] = e.VETO[i].energy; VETO_t0[i] = e.VETO[i].t0ns();
     }
 
     // --- Shower chi2 ---
     showerChi2 = calcShowerChi2(e);
 
     // -------------------------------------------------------
-    // HOD2 RAW: read waveform directly from ChipSADC digits
-    // Bypasses RunCellReco (fails for preprocessing mode 0-33)
+    // HOD2 RAW: separate port 3 and port 5 amplitudes
+    //
+    // Port identification via strip/channel relationship:
+    //   Port 3: strip = 15 - chan  (reversed)
+    //   Port 5: strip = chan       (direct)
     // -------------------------------------------------------
     for (int i = 0; i < 16; i++) {
-      HOD2_xamp[i] = HOD2_yamp[i] = 0;
-      HOD2_xped[i] = HOD2_yped[i] = 0;
-      HOD2_xmax[i] = HOD2_ymax[i] = 0;
-      HOD2_xnsamples[i] = HOD2_ynsamples[i] = 0;
+      HOD2_xamp_p3[i] = HOD2_yamp_p3[i] = 0;
+      HOD2_xped_p3[i] = HOD2_yped_p3[i] = 0;
+      HOD2_xmax_p3[i] = HOD2_ymax_p3[i] = 0;
+      HOD2_xamp_p5[i] = HOD2_yamp_p5[i] = 0;
+      HOD2_xped_p5[i] = HOD2_yped_p5[i] = 0;
+      HOD2_xmax_p5[i] = HOD2_ymax_p5[i] = 0;
     }
 
     for (auto it = manager.GetEventDigits().begin();
@@ -258,7 +267,9 @@ int main(int argc, char *argv[])
       if (dname != "HOD2X" && dname != "HOD2Y") continue;
 
       const int strip = sadc->GetY();
+      const int chan  = sadc->GetChannel();
       if (strip < 0 || strip > 15) continue;
+      if (chan  < 0 || chan  > 15) continue;
 
       const vector<CS::uint16>& samples = sadc->GetSamples();
       if (samples.empty()) continue;
@@ -274,22 +285,34 @@ int main(int argc, char *argv[])
       CS::uint16 maxS = *max_element(samples.begin(), samples.end());
       double amp = (double)maxS - ped;
 
+      // Identify port by strip/channel relationship
+      bool isPort3 = (strip == 15 - chan);  // reversed mapping
+      bool isPort5 = (strip == chan);        // direct mapping
+
       if (dname == "HOD2X") {
-        HOD2_xamp[strip]      = amp;
-        HOD2_xped[strip]      = ped;
-        HOD2_xmax[strip]      = (double)maxS;
-        HOD2_xnsamples[strip] = ns;
-      } else {
-        HOD2_yamp[strip]      = amp;
-        HOD2_yped[strip]      = ped;
-        HOD2_ymax[strip]      = (double)maxS;
-        HOD2_ynsamples[strip] = ns;
+        if (isPort3) {
+          HOD2_xamp_p3[strip] = amp;
+          HOD2_xped_p3[strip] = ped;
+          HOD2_xmax_p3[strip] = (double)maxS;
+        } else if (isPort5) {
+          HOD2_xamp_p5[strip] = amp;
+          HOD2_xped_p5[strip] = ped;
+          HOD2_xmax_p5[strip] = (double)maxS;
+        }
+      } else { // HOD2Y
+        if (isPort3) {
+          HOD2_yamp_p3[strip] = amp;
+          HOD2_yped_p3[strip] = ped;
+          HOD2_ymax_p3[strip] = (double)maxS;
+        } else if (isPort5) {
+          HOD2_yamp_p5[strip] = amp;
+          HOD2_yped_p5[strip] = ped;
+          HOD2_ymax_p5[strip] = (double)maxS;
+        }
       }
     }
 
-    // -------------------------------------------------------
-    // HOD2 RECO: standard RunCellReco output (cross-check)
-    // -------------------------------------------------------
+    // HOD2 standard reco (cross-check)
     for (int i = 0; i < 16; i++) {
       HOD2_xamp_reco[i] = e.HOD2.xplane[i].amplitude;
       HOD2_xene_reco[i] = e.HOD2.xplane[i].energy;
