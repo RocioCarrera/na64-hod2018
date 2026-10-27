@@ -29,6 +29,7 @@
 #include "DaqEventsManager.h"
 #include "DaqEvent.h"
 #include "ChipSADC.h"
+#include "ChipV260.h"
 using namespace CS;
 
 #include <TFile.h>
@@ -122,6 +123,12 @@ int main(int argc, char *argv[])
   // ===== ECAL shower chi2 =====
   double showerChi2;
   tree->Branch("showerChi2", &showerChi2);
+
+  // ===== SCALERS =====
+  long64_t S1_scaler, S1S4_Vbar, S1S4_VbarBUSY;
+  tree->Branch("S1_scaler", &S1_scaler)
+  tree->Branch("S1-S4_Vbar", &S1-S4_Vbar);
+  tree->Branch("S1-S4_VbarBUSY", &S1-S4_VbarBUSY);
 
   // ================================================================
   // HOD2 (Hod2018): TWO physical layers, each 16 strips
@@ -246,6 +253,18 @@ int main(int argc, char *argv[])
 
     // --- Shower chi2 ---
     showerChi2 = calcShowerChi2(e);
+
+    // --- Scalers ---
+    S1_scaler = S1S4_Vbar = S1S4_VbarBUSY = -1;
+    for (auto it = manager.GetEventDigits().begin();
+              it != manager.GetEventDigits().end(); ++it) {
+      const CS::ChipV260::Digit* sc =
+        dynamic_cast<const CS::ChipV260::Digit*>(it->second);
+      if (!sc) continue;
+      if (sc->name == "S1")             S1_scaler     = sc->counter;
+      if (sc->name == "S1-S4_Vbar")     S1S4_Vbar     = sc->counter;
+      if (sc->name == "S1-S4_VbarBUSY") S1S4_VbarBUSY = sc->counter;
+    }
 
     // -------------------------------------------------------
     // HOD2 RAW: separate port 3 and port 5 amplitudes
