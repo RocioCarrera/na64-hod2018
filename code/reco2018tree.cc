@@ -125,10 +125,10 @@ int main(int argc, char *argv[])
   tree->Branch("showerChi2", &showerChi2);
 
   // ===== SCALERS =====
-  long64_t S1_scaler, S1S4_Vbar, S1S4_VbarBUSY;
-  tree->Branch("S1_scaler", &S1_scaler)
-  tree->Branch("S1-S4_Vbar", &S1-S4_Vbar);
-  tree->Branch("S1-S4_VbarBUSY", &S1-S4_VbarBUSY);
+  Long64_t S1_scaler, S1S4_Vbar, S1S4_VbarBUSY;
+  tree->Branch("S1_scaler", &S1_scaler);
+  tree->Branch("S1S4_Vbar", &S1S4_Vbar);
+  tree->Branch("S1S4_VbarBUSY", &S1S4_VbarBUSY);
 
   // ================================================================
   // HOD2 (Hod2018): TWO physical layers, each 16 strips
