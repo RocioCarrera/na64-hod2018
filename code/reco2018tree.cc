@@ -85,11 +85,14 @@ int main(int argc, char *argv[])
   tree->Branch("masterTime", &masterTime);
 
   // ===== Scintillators =====
-  double S0_amp, S1_amp, S2_amp;
-  double S0_t0,  S1_t0,  S2_t0;
+  double S0_amp, S1_amp, S2_amp, S3_amp, S4_amp;
+  double S0_t0,  S1_t0,  S2_t0, S3_t0, S4_t0;
   tree->Branch("S0_amp", &S0_amp); tree->Branch("S0_t0", &S0_t0);
   tree->Branch("S1_amp", &S1_amp); tree->Branch("S1_t0", &S1_t0);
   tree->Branch("S2_amp", &S2_amp); tree->Branch("S2_t0", &S2_t0);
+  tree->Branch("S3_amp", &S3_amp); tree->Branch("S3_t0", &S3_t0);
+  tree->Branch("S4_amp", &S4_amp); tree->Branch("S4_t0", &S4_t0);
+
 
   // ===== ECAL =====
   double ecalTotal, ecal0, ecal1;
@@ -211,6 +214,9 @@ int main(int argc, char *argv[])
     S0_amp = e.S0.energy; S0_t0 = e.S0.t0ns();
     S1_amp = e.S1.energy; S1_t0 = e.S1.t0ns();
     S2_amp = e.S2.energy; S2_t0 = e.S2.t0ns();
+    S3_amp = e.S3.energy; S3_t0 = e.S3.t0ns();
+    S4_amp = e.S4.energy; S4_t0 = e.S4.t0ns();
+    
 
     // --- ECAL ---
     ecal0 = e.ecalTotalEnergy(0); ecal1 = e.ecalTotalEnergy(1);
